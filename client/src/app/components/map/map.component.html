@@ -1,0 +1,70 @@
+<div class="map-container">
+
+  <!-- Map Background Placeholder -->
+  <!-- Usually your Leaflet or Google Map hooks onto this ID and fills 100% height -->
+  <div id="map"></div>
+
+  <!-- Top Floating Area for Search & Filters -->
+  <div class="top-overlay">
+    
+    <div class="search-bar">
+      <input
+        type="text"
+        [(ngModel)]="manualSearchQuery"
+        placeholder="What service do you need?"
+        (keyup.enter)="searchByAddress()"
+      />
+      <button (click)="searchByAddress()">Find</button>
+    </div>
+
+    <div class="category-filter">
+      <button (click)="onCategoryChange('')"           [class.active]="selectedCategory === ''">All Services</button>
+      <button (click)="onCategoryChange('Electrician')" [class.active]="selectedCategory === 'Electrician'">Electrician</button>
+      <button (click)="onCategoryChange('Plumber')"     [class.active]="selectedCategory === 'Plumber'">Plumber</button>
+      <button (click)="onCategoryChange('Cleaning')"    [class.active]="selectedCategory === 'Cleaning'">Cleaning</button>
+      <button (click)="onCategoryChange('Carpenter')"   [class.active]="selectedCategory === 'Carpenter'">Carpenter</button>
+    </div>
+
+  </div>
+
+  <!-- Dynamic Status Alerts -->
+  <div class="loading-bar" *ngIf="isLoading">Finding top-rated pros...</div>
+  <div class="location-error" *ngIf="locationError">{{ locationError }}</div>
+
+  <!-- Bottom Floating Horizontal Provider Carousel -->
+  <div class="bottom-overlay">
+    
+    <div class="provider-list" *ngIf="providers.length > 0">
+      
+      <div class="provider-card" *ngFor="let p of providers">
+        <h4>{{ p.user.name }}</h4>
+        
+        <div class="details-row">
+          <span class="category-tag">{{ p.category }}</span>
+          <span class="rate">₹{{ p.hourlyRate }}/hr</span>
+        </div>
+        
+        <div class="stats">
+          <span class="rating">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+               <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+            </svg>
+            {{ p.avgRating }}
+          </span>
+          <span>·</span>
+          <span>{{ p.badge }} badge</span>
+        </div>
+
+        <button (click)="bookProvider(p)">Book Now</button>
+      </div>
+
+    </div>
+    
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="providers.length === 0 && !isLoading">
+      No professionals found in your area. Try expanding your search.
+    </div>
+
+  </div>
+
+</div>
