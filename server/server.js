@@ -5,9 +5,14 @@ const helmet = require('helmet');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const { initSocket } = require('./config/socket');
+const { startBadgeCron } = require('./jobs/badgeCron');
 
 dotenv.config();
-connectDB();
+
+// Start cron job after DB connection established
+connectDB().then(() => {
+  startBadgeCron();
+});
 
 const app = express();
 const server = http.createServer(app);
