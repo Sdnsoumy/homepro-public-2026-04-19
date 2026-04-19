@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { triggerSOS, acceptSOS } = require('../controllers/sosController');
-const { protect } = require('../middlewares/auth');
+const { protect, authorize } = require('../middlewares/auth');
 
 /**
  * SOS Emergency Dispatch Routes
@@ -28,7 +28,7 @@ const { protect } = require('../middlewares/auth');
  * Categories: 'Electrician','Plumber','Home Cleaning','Carpenter','Painter','AC Repair'
  * Returns sosId for client tracking (optional future use)
  */
-router.post('/', protect, triggerSOS);
+router.post('/', protect, authorize('user'), triggerSOS);
 
 /**
  * POST /api/sos/:sosId/accept
@@ -38,6 +38,6 @@ router.post('/', protect, triggerSOS);
  * Notifies user and cancels alerts to other providers
  * Response: { success, bookingId }
  */
-router.post('/:sosId/accept', protect, acceptSOS);
+router.post('/:sosId/accept', protect, authorize('provider'), acceptSOS);
 
 module.exports = router;
