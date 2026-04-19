@@ -13,6 +13,7 @@
  */
 
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { SocketService } from '../../services/socket.service';
 import { environment } from '../../../environments/environment';
@@ -20,6 +21,7 @@ import { environment } from '../../../environments/environment';
 @Component({
   selector: 'app-sos-button',
   standalone: true,
+  imports: [CommonModule],
   template: `
     <div class="sos-container">
 
