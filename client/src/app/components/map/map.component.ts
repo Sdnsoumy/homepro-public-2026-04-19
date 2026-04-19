@@ -1,6 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Inject, OnDestroy, OnInit, PLATFORM_ID } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { isPlatformBrowser } from '@angular/common';
+import { Subject, debounceTime, takeUntil } from 'rxjs';
+import { ProviderService } from '../../services/provider.service';
 
 @Component({
   selector: 'app-map',
@@ -9,74 +12,246 @@ import { FormsModule } from '@angular/forms';
   templateUrl: './map.component.html',
   styleUrl: './map.component.scss'
 })
-export class MapComponent implements OnInit {
+export class MapComponent implements OnInit, OnDestroy {
   manualSearchQuery: string = '';
   locationError: string | null = null;
   selectedCategory: string = '';
   isLoading: boolean = false;
-  
-  // Dummy data beautifully populated to demonstration the breathtaking UI right away
   providers: any[] = [];
 
-  ngOnInit(): void {
-    // Add dummy providers for UI visual check
-    this.providers = [
-      {
-        user: { name: 'Arjun Kumar' },
-        category: 'Electrician',
-        hourlyRate: 350,
-        avgRating: 4.8,
-        badge: 'Gold'
-      },
-      {
-        user: { name: 'Priya Sharma' },
-        category: 'Cleaning',
-        hourlyRate: 200,
-        avgRating: 4.9,
-        badge: 'Silver'
-      },
-      {
-        user: { name: 'Rajesh Singh' },
-        category: 'Plumber',
-        hourlyRate: 400,
-        avgRating: 4.6,
-        badge: 'Bronze'
-      },
-      {
-        user: { name: 'Sanjay Woodworks' },
-        category: 'Carpenter',
-        hourlyRate: 450,
-        avgRating: 4.7,
-        badge: 'Gold'
-      }
-    ];
+  private leaflet: typeof import('leaflet') | null = null;
+  private map: any = null;
+  private markersLayer: any = null;
+  private readonly destroy$ = new Subject<void>();
+  private readonly moveEnd$ = new Subject<void>();
+  private readonly minSearchZoom = 11;
+  private readonly isBrowser: boolean;
 
-    // Simulate leaflet map injection mock
-    this.initMapDemo();
+  constructor(
+    @Inject(PLATFORM_ID) platformId: Object,
+    private providerService: ProviderService
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
+  }
+
+  ngOnInit(): void {
+    if (!this.isBrowser) {
+      return;
+    }
+
+    this.moveEnd$
+      .pipe(debounceTime(600), takeUntil(this.destroy$))
+      .subscribe(() => this.loadNearbyProviders());
+
+    void this.initializeLeafletMap();
   }
 
   searchByAddress(): void {
-    if (!this.manualSearchQuery) return;
-    this.isLoading = true;
-    setTimeout(() => {
-      this.isLoading = false;
-    }, 1500);
+    if (!this.map) {
+      return;
+    }
+    this.loadNearbyProviders();
   }
 
   onCategoryChange(category: string): void {
     this.selectedCategory = category;
+    this.loadNearbyProviders();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.moveEnd$.complete();
+
+    if (this.map) {
+      this.map.remove();
+      this.map = null;
+    }
   }
 
   bookProvider(provider: any): void {
-    alert(`Booking workflow started for ${provider.user.name}`);
+    alert(`Booking workflow started for ${provider?.user?.name || 'provider'}`);
   }
 
-  initMapDemo(): void {
-    // Basic gray background to emulate map visually until leaflet connects
-    const mapDiv = document.getElementById('map');
-    if (mapDiv) {
-      mapDiv.style.background = '#e2e8f0 url("data:image/svg+xml,%3Csvg width=\'100\' height=\'100\' viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z\' fill=\'%23cbd5e1\' fill-opacity=\'0.4\' fill-rule=\'evenodd\'/%3E%3C/svg%3E")';
-      mapDiv.style.backgroundSize = '40px 40px';
+  private fixLeafletDefaultIcons(): void {
+    if (!this.leaflet) {
+      return;
     }
+
+    this.leaflet.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'assets/leaflet/marker-icon-2x.png',
+      iconUrl: 'assets/leaflet/marker-icon.png',
+      shadowUrl: 'assets/leaflet/marker-shadow.png'
+    });
+  }
+
+  private async initializeLeafletMap(): Promise<void> {
+    // Load Leaflet only on browser runtime to keep SSR route extraction safe.
+    this.leaflet = await import('leaflet');
+    this.markersLayer = this.leaflet.layerGroup();
+    this.fixLeafletDefaultIcons();
+    this.initMap();
+    this.requestCurrentLocation();
+  }
+
+  private initMap(): void {
+    if (!this.leaflet) {
+      return;
+    }
+
+    this.map = this.leaflet.map('map', { zoomControl: true }).setView([20.2961, 85.8245], 12);
+
+    this.leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(this.map);
+
+    this.markersLayer.addTo(this.map);
+
+    this.map.on('moveend', () => {
+      this.moveEnd$.next();
+    });
+  }
+
+  private requestCurrentLocation(): void {
+    if (!this.isBrowser) {
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      this.locationError = 'Geolocation is not supported by your browser.';
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (!this.map) {
+          return;
+        }
+        this.locationError = null;
+        this.map.setView([position.coords.latitude, position.coords.longitude], 13);
+        this.loadNearbyProviders();
+      },
+      (error) => {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            this.locationError = 'Location permission denied. Enable GPS permission to see nearby providers.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            this.locationError = 'Location information is unavailable right now.';
+            break;
+          case error.TIMEOUT:
+            this.locationError = 'Location request timed out. Please try again.';
+            break;
+          default:
+            this.locationError = 'Unable to fetch your location.';
+        }
+
+        this.loadNearbyProviders();
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  private loadNearbyProviders(): void {
+    if (!this.map) {
+      return;
+    }
+
+    const zoom = this.map.getZoom();
+    // Avoid low-zoom requests that create noisy, high-volume API traffic.
+    if (zoom < this.minSearchZoom) {
+      this.providers = [];
+      this.markersLayer.clearLayers();
+      this.locationError = `Zoom in to level ${this.minSearchZoom} or higher to search.`;
+      return;
+    }
+
+    const center = this.map.getCenter();
+    this.isLoading = true;
+    this.locationError = null;
+
+    this.providerService
+      .getNearbyProviders(center.lat, center.lng, this.selectedCategory)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response: any) => {
+          const providers = Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response)
+              ? response
+              : [];
+
+          this.providers = providers;
+          this.renderMarkers(providers);
+          this.isLoading = false;
+        },
+        error: () => {
+          this.providers = [];
+          this.markersLayer.clearLayers();
+          this.locationError = 'Unable to load nearby providers at the moment.';
+          this.isLoading = false;
+        }
+      });
+  }
+
+  private renderMarkers(providers: any[]): void {
+    if (!this.leaflet || !this.markersLayer) {
+      return;
+    }
+    const leaflet = this.leaflet;
+
+    this.markersLayer.clearLayers();
+
+    providers.forEach((provider) => {
+      const coordinates = provider?.location?.coordinates;
+      // Ignore malformed records rather than crashing marker rendering.
+      if (!Array.isArray(coordinates) || coordinates.length < 2) {
+        return;
+      }
+
+      const [lng, lat] = coordinates;
+      if (typeof lat !== 'number' || typeof lng !== 'number') {
+        return;
+      }
+
+      leaflet.marker([lat, lng])
+        .bindPopup(this.getPopupContent(provider))
+        .addTo(this.markersLayer);
+    });
+  }
+
+  private getPopupContent(provider: any): string {
+    const name = provider?.user?.name || 'Unnamed provider';
+    const category = provider?.category || 'General service';
+    const hourlyRate = typeof provider?.hourlyRate === 'number' ? `₹${provider.hourlyRate}/hr` : 'Rate unavailable';
+    const rating = typeof provider?.avgRating === 'number' ? provider.avgRating.toFixed(1) : 'N/A';
+    const badge = provider?.badge || 'Standard';
+
+    return `<strong>${name}</strong><br/>${category}<br/>${hourlyRate}<br/>Rating: ${rating}<br/>${badge} badge`;
+  }
+
+  getProviderName(provider: any): string {
+    return provider?.user?.name || 'Unnamed provider';
+  }
+
+  getProviderCategory(provider: any): string {
+    return provider?.category || 'General';
+  }
+
+  getProviderRate(provider: any): string {
+    return typeof provider?.hourlyRate === 'number' ? `${provider.hourlyRate}` : 'N/A';
+  }
+
+  getProviderRating(provider: any): string {
+    return typeof provider?.avgRating === 'number' ? provider.avgRating.toFixed(1) : 'N/A';
+  }
+
+  getProviderBadge(provider: any): string {
+    return provider?.badge || 'Standard';
+  }
+
+  trackByProvider(index: number, provider: any): string {
+    return provider?._id || provider?.user?._id || provider?.user?.email || `${index}`;
   }
 }

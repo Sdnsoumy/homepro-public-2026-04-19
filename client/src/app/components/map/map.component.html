@@ -36,12 +36,12 @@
     
     <div class="provider-list" *ngIf="providers.length > 0">
       
-      <div class="provider-card" *ngFor="let p of providers">
-        <h4>{{ p.user.name }}</h4>
+      <div class="provider-card" *ngFor="let p of providers; trackBy: trackByProvider">
+        <h4>{{ getProviderName(p) }}</h4>
         
         <div class="details-row">
-          <span class="category-tag">{{ p.category }}</span>
-          <span class="rate">₹{{ p.hourlyRate }}/hr</span>
+          <span class="category-tag">{{ getProviderCategory(p) }}</span>
+          <span class="rate">₹{{ getProviderRate(p) }}/hr</span>
         </div>
         
         <div class="stats">
@@ -49,10 +49,10 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
             </svg>
-            {{ p.avgRating }}
+            {{ getProviderRating(p) }}
           </span>
           <span>·</span>
-          <span>{{ p.badge }} badge</span>
+          <span>{{ getProviderBadge(p) }} badge</span>
         </div>
 
         <button (click)="bookProvider(p)">Book Now</button>

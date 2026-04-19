@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 .map-container {
   position: relative;
   height: 100vh;
@@ -13,7 +11,8 @@
   position: absolute;
   top: 0;
   left: 0;
-  height: 100%;
+  height: 640px;
+  min-height: 520px;
   width: 100%;
   z-index: 1;
 }
