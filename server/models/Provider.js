@@ -23,7 +23,7 @@ const providerSchema = new mongoose.Schema({
   // Response time tracking for badge calculation
   totalResponseTimeMs: { type: Number, default: 0 }, // cumulative milliseconds to accept bookings
   totalResponses:      { type: Number, default: 0 },  // how many times they responded (accepted/rejected)
-  avgResponseTimeMs:   { type: Number, default: 0 },  // calculated average response time
+  avgResponseTimeMs:   { type: Number, default: Infinity },  // calculated average response time
 
   // SOS wave tracking — stores which wave they were in for emergency dispatch
   sosWave: { type: Number, default: 0 },
