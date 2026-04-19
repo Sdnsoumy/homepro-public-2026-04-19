@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
@@ -27,6 +28,9 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Serve uploads folder as static files for downloading review photos and user uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Root route for API health check
 app.get('/', (req, res) => {
   res.json({ success: true, message: 'HomePro API is running' });
@@ -38,6 +42,8 @@ app.use('/api/providers', require('./routes/providers'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/sos', require('./routes/sos'));
 app.use('/api/recommendations', require('./routes/recommendations'));
+app.use('/api/payments', require('./routes/payments'));
+app.use('/api/reviews',  require('./routes/reviews'));
 
 // Global error handler — MUST be last
 app.use((err, req, res, next) => {
