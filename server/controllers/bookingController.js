@@ -160,6 +160,25 @@ exports.updateBookingStatus = async (req, res, next) => {
     booking.status = status;
     await booking.save();
 
+    // Record response time when provider accepts booking
+    if (status === 'Accepted') {
+      // Calculate how long it took provider to respond (in milliseconds)
+      const responseTimeMs = Date.now() - new Date(booking.createdAt).getTime();
+
+      // Update provider's cumulative response time and response count
+      await Provider.findByIdAndUpdate(booking.provider._id, {
+        $inc: {
+          totalResponseTimeMs: responseTimeMs,
+          totalResponses:      1,
+        }
+      });
+
+      // Recalculate average response time for badge calculation
+      const provider = await Provider.findById(booking.provider._id);
+      provider.avgResponseTimeMs = provider.totalResponseTimeMs / provider.totalResponses;
+      await provider.save();
+    }
+
     // Socket.io notification map: Each status triggers specific user notification
     // User receives real-time updates about their booking via personal room
     const notificationMap = {
