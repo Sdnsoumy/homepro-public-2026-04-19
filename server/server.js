@@ -37,6 +37,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/providers', require('./routes/providers'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/sos', require('./routes/sos'));
+app.use('/api/recommendations', require('./routes/recommendations'));
 
 // Global error handler — MUST be last
 app.use((err, req, res, next) => {
