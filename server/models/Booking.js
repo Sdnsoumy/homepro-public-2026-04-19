@@ -12,6 +12,9 @@ const bookingSchema = new mongoose.Schema({
   isPaid:       { type: Boolean, default: false },
   isEmergency:  { type: Boolean, default: false },
   notes:        { type: String, maxlength: 300 },
+  autoRejectAt: { type: Date }, // set to createdAt + 5 minutes
+  cancelledBy:  { type: String, enum: ['user', 'provider', 'system'] },
+  cancelReason: { type: String, maxlength: 300 },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Booking', bookingSchema);

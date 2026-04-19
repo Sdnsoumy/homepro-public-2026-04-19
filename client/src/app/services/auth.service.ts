@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { map, Observable } from 'rxjs';
+import { SocketService } from './socket.service';
 
 export type UserRole = 'user' | 'provider' | 'admin';
 
@@ -20,8 +21,20 @@ interface RefreshTokenResponse {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly socketService = inject(SocketService);
   private readonly accessTokenKey = 'homepro_access_token';
   private readonly userKey = 'homepro_user';
+
+  constructor() {
+    if (!this.isBrowser) return;
+
+    const storedUser = localStorage.getItem(this.userKey);
+    const storedToken = localStorage.getItem(this.accessTokenKey);
+    if (storedUser && storedToken) {
+      // Reconnect socket after page reload when a valid local session exists.
+      this.socketService.connect(storedToken);
+    }
+  }
 
   private get isBrowser(): boolean {
     return typeof window !== 'undefined' && !!window.localStorage;
@@ -35,6 +48,7 @@ export class AuthService {
   setAccessToken(token: string): void {
     if (!this.isBrowser) return;
     localStorage.setItem(this.accessTokenKey, token);
+    this.socketService.connect(token);
   }
 
   setUser(user: AuthUser): void {
@@ -66,6 +80,7 @@ export class AuthService {
     if (!this.isBrowser) return;
     localStorage.removeItem(this.accessTokenKey);
     localStorage.removeItem(this.userKey);
+    this.socketService.disconnect();
   }
 
   refreshAccessToken(): Observable<string> {

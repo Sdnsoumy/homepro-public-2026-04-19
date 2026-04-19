@@ -1,13 +1,18 @@
 const express = require('express');
-const cors    = require('cors');
-const helmet  = require('helmet');
-const dotenv  = require('dotenv');
+const http = require('http');
+const cors = require('cors');
+const helmet = require('helmet');
+const dotenv = require('dotenv');
 const connectDB = require('./config/db');
+const { initSocket } = require('./config/socket');
 
 dotenv.config();
 connectDB();
 
 const app = express();
+const server = http.createServer(app);
+
+initSocket(server);
 
 app.use(helmet());
 app.use(cors({
@@ -25,6 +30,7 @@ app.get('/', (req, res) => {
 // Routes (you'll add these progressively)
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/providers', require('./routes/providers'));
+app.use('/api/bookings', require('./routes/bookings'));
 
 // Global error handler — MUST be last
 app.use((err, req, res, next) => {
@@ -36,4 +42,4 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
